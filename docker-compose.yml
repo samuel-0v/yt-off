@@ -1,0 +1,63 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+    container_name: yt-off-frontend
+    environment:
+      VITE_API_BASE_URL: /api
+      VITE_API_PROXY_TARGET: http://backend:8080
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./downloads:/downloads
+    networks:
+      - yt-off-network
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+    container_name: yt-off-backend
+    environment:
+      APP_ENV: development
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+      BACKEND_PUBLIC_PORT: 18080
+      FRONTEND_PORT: 5173
+      LOCAL_NETWORK_IP: ${LOCAL_NETWORK_IP:-}
+      DOWNLOADS_DIR: /downloads
+      DATABASE_PATH: /app/data/yt-off.db
+      DOCKER_HOST: unix:///var/run/docker.sock
+      YTDLP_CONTAINER_NAME: yt-off-yt-dlp
+      YTDLP_JS_RUNTIME: node
+      YTDLP_COOKIES_FILE: /cookies/youtube.txt
+    ports:
+      - "18080:8080"
+    volumes:
+      - ./downloads:/downloads
+      - ./cookies:/cookies
+      - database:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - yt-off-network
+    depends_on:
+      - yt-dlp
+
+  yt-dlp:
+    build:
+      context: ./docker/yt-dlp
+    container_name: yt-off-yt-dlp
+    working_dir: /downloads
+    volumes:
+      - ./downloads:/downloads
+      - ./cookies:/cookies
+    networks:
+      - yt-off-network
+
+networks:
+  yt-off-network:
+    name: yt-off-network
+
+volumes:
+  database:
